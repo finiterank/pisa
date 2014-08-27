@@ -1,0 +1,74 @@
+---
+title: "Desigualdades en PISA"
+author: "Javier Moreno"
+date: "August 26, 2014"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(RColorBrewer)
+library(ineq)
+library(plyr)
+library(reshape2)
+```
+
+```{r}
+load("data/student2012.rda")
+st <- student2012
+rm(student2012)
+latin.america <- c("Colombia", "Brazil", "Chile", "Argentina", "Peru", "Costa Rica", "Mexico", "Uruguay", "United States of America")
+```
+
+```{r}
+tabla.entropy <- ddply(st, .(CNT, ST04Q01), summarise, entropy.math=entropy(PV1MATH, parameter=1), entropy.read=entropy(PV1READ, parameter=1))
+tabla.entropy$CNT <- reorder(tabla.entropy$CNT, tabla.entropy$entropy.math)
+color.label.entropy <- ifelse(levels(tabla.entropy$CNT) %in% latin.america, "red", "black")
+tabla.entropy <- melt(tabla.entropy, id.vars=c("CNT", "ST04Q01"), measure.vars = c("entropy.math", "entropy.read"))
+levels(tabla.entropy$variable) <- c("Math", "Reading")
+ggplot(tabla.entropy, aes(x=CNT, y=value, fill=ST04Q01)) + geom_bar(stat="identity", position="dodge") + facet_grid(. ~ variable) + coord_flip() + xlab("Country") + ylab("Entropy (Theil index)") + theme(axis.text.y = element_text(colour=color.label.entropy, hjust=1)) + scale_fill_discrete(name="Sex")
+```
+
+```{r}
+tabla.sd <- ddply(st, .(CNT, ST04Q01), summarise, sd.math=sd(PV1MATH), sd.read=sd(PV1READ))
+tabla.sd$CNT <- reorder(tabla.sd$CNT, tabla.sd$sd.math)
+tabla.sd <- melt(tabla.sd, id.vars=c("CNT", "ST04Q01"), measure.vars = c("sd.math", "sd.read"))
+ggplot(tabla.sd, aes(x=CNT, y=value, fill=ST04Q01)) + geom_bar(stat="identity", position="dodge") + facet_grid(. ~ variable) + coord_flip()
+```
+
+```{r}
+paises <- c("Chile","Colombia", "Spain", "Peru","Canada",  "Mexico", "Israel", "Japan", "Costa Rica", "Germany", "Finland", "Brazil", "Argentina", "Estonia", "Ireland", "United States of America", "Qatar", "France")
+math <- st[(st$CNT %in% paises),c("CNT","ST04Q01", "PV1MATH", "PV1READ")]
+```
+
+```{r}
+
+
+math$CNT <- factor(math$CNT, levels=levels(tabla.entropy$CNT)[levels(tabla.entropy$CNT) %in% paises])
+color.label <- ifelse(levels(math$CNT) == "Colombia", "red", "black")
+ggplot(math, aes(x=CNT, y=PV1MATH)) + 
+  geom_violin(aes(fill=factor(CNT == "Colombia"))) + 
+  facet_grid(. ~ ST04Q01) + 
+  xlab("Country") + 
+  ylab("Math Score") +
+  scale_fill_brewer(guide = 'none', palette="Set1") + 
+  coord_flip() + theme(axis.text.y = element_text(colour=color.label, hjust=1))
+```
+
+```{r}
+ggplot(math, aes(x=CNT, y=PV1READ)) + 
+  geom_violin(aes(fill=factor(CNT == "Colombia"))) + 
+  facet_grid(ST04Q01 ~ .) + 
+  xlab("Country") + 
+  ylab("Reading Score") +
+  scale_fill_brewer(guide = 'none', palette="Set1")
+```
+
+```{r}
+#colombia.male.ecdf<- ecdf(math[(math$CNT=="Colombia") & (math$ST04Q01 == "Male"), "PV1MATH"])
+ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) + stat_ecdf() + facet_grid(CNT ~ .) + scale_colour_brewer(guide = 'none', palette="Set1")
+```
+
+```{r}
+ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) + geom_density() + facet_grid(CNT ~ .) + scale_colour_brewer(guide = 'none', palette="Set1")
+```
