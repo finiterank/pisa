@@ -21,12 +21,19 @@ latin.america <- c("Colombia", "Brazil", "Chile", "Argentina", "Peru", "Costa Ri
 ```
 
 ```{r}
-tabla.entropy <- ddply(st, .(CNT, ST04Q01), summarise, entropy.math=entropy(PV1MATH, parameter=1), entropy.read=entropy(PV1READ, parameter=1))
-tabla.entropy$CNT <- reorder(tabla.entropy$CNT, tabla.entropy$entropy.math)
+cajas <- 500
+st$segmented.math <- cut(st$PV1MATH, breaks=0:cajas)
+st$segmented.read <- cut(st$PV1READ, breaks=0:cajas)
+tabla.entropy <- ddply(st, .(CNT, ST04Q01), summarise, entropy.math=entropy(PV1MATH, parameter=1), entropy.read=entropy(PV1READ, parameter=1), entropy.seg.math=entropy(segmented.math, parameter=1), entropy.seg.read=entropy(segmented.read, parameter=1), mean.math=mean(PV1MATH), mean.read=mean(PV1READ))
+tabla.entropy$CNT <- reorder(tabla.entropy$CNT, tabla.entropy$entropy.seg.math)
 color.label.entropy <- ifelse(levels(tabla.entropy$CNT) %in% latin.america, "red", "black")
-tabla.entropy <- melt(tabla.entropy, id.vars=c("CNT", "ST04Q01"), measure.vars = c("entropy.math", "entropy.read"))
-levels(tabla.entropy$variable) <- c("Math", "Reading")
-ggplot(tabla.entropy, aes(x=CNT, y=value, fill=ST04Q01)) + geom_bar(stat="identity", position="dodge") + facet_grid(. ~ variable) + coord_flip() + xlab("Country") + ylab("Entropy (Theil index)") + theme(axis.text.y = element_text(colour=color.label.entropy, hjust=1)) + scale_fill_discrete(name="Sex")
+tabla.entropy.melt <- melt(tabla.entropy, id.vars=c("CNT", "ST04Q01"), measure.vars = c("entropy.math", "entropy.read", "entropy.seg.math", "entropy.seg.read"))
+levels(tabla.entropy.melt$variable) <- c("Math", "Reading", "Math (Seg.)", "Reading (Seg.)")
+ggplot(tabla.entropy.melt[tabla.entropy.melt$variable %in% c("Math (Seg.)", "Reading (Seg.)"),], aes(x=CNT, y=value, fill=ST04Q01)) + geom_bar(stat="identity", position="dodge") + facet_grid(. ~ variable) + coord_flip() + xlab("Country") + ylab("Entropy (Theil index)") + theme(axis.text.y = element_text(colour=color.label.entropy, hjust=1)) + scale_fill_discrete(name="Sex")
+```
+
+```{r}
+ggplot(tabla.entropy, aes(x=mean.math, y=entropy.math, col=ST04Q01)) + geom_point() + geom_smooth(method="lm") + xlab("Mean Math Scores") + ylab("Entropy Math Scores") + scale_color_discrete(name="Sex")
 ```
 
 ```{r}
@@ -42,8 +49,6 @@ math <- st[(st$CNT %in% paises),c("CNT","ST04Q01", "PV1MATH", "PV1READ")]
 ```
 
 ```{r}
-
-
 math$CNT <- factor(math$CNT, levels=levels(tabla.entropy$CNT)[levels(tabla.entropy$CNT) %in% paises])
 color.label <- ifelse(levels(math$CNT) == "Colombia", "red", "black")
 ggplot(math, aes(x=CNT, y=PV1MATH)) + 
@@ -71,4 +76,14 @@ ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) + stat_ecdf() + facet_grid(CNT ~ .)
 
 ```{r}
 ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) + geom_density() + facet_grid(CNT ~ .) + scale_colour_brewer(guide = 'none', palette="Set1")
+```
+
+```{r}
+function.entropy <- function(x){
+  mx <- mean(x)
+  a <- x * (1/mx)
+  b <- log(a) * a
+  output <- mean(b)
+  return(output)
+}
 ```
