@@ -5,7 +5,7 @@ date: ""
 output: html_document
 ---
 
-```{r, ,echo=FALSE}
+```{r, message=F, warning=F, echo=FALSE}
 library(ggplot2)
 library(RColorBrewer)
 library(ineq)
