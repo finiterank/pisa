@@ -66,7 +66,7 @@ tabla.sd <- ddply(st, .(CNT, ST04Q01), summarise, sd.math=sd(PV1MATH), sd.read=s
 tabla.sd$CNT <- reorder(tabla.sd$CNT, tabla.sd$sd.math)
 color.label.sd <- ifelse(levels(tabla.sd$CNT) %in% latin.america, "red", "black")
 tabla.sd <- melt(tabla.sd, id.vars=c("CNT", "ST04Q01"), measure.vars = c("sd.math", "sd.read"))
-ggplot(tabla.sd, aes(x=CNT, y=value, fill=ST04Q01)) + geom_bar(stat="identity", position="dodge") + facet_grid(. ~ variable) + coord_flip()  + scale_fill_discrete(name="Sex") + theme(axis.text.y = element_text(colour=color.label.sd, hjust=1))
+ggplot(tabla.sd, aes(x=CNT, y=value, fill=ST04Q01)) + geom_bar(stat="identity", position="dodge") + facet_grid(. ~ variable) + coord_flip()  + scale_fill_discrete(name="Sex") + theme(axis.text.y = element_text(colour=color.label.sd, hjust=1)) + xlab("Country") + ylab("Standard Deviation")
 ```
 
 # Distributions of scores (for selected countries)
@@ -143,12 +143,20 @@ plots.quant <- lapply(paises.comp, function(x) plot.quantiles("Colombia", x))
 do.call(grid.arrange, c(plots.quant, ncol=3))
 ```
 
-And let's do the same with Singapore:
+Let's do the same with Singapore:
 
 ```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
 plots.quant.singapore <- lapply(paises.comp, function(x) plot.quantiles("Singapore", x))
 
 do.call(grid.arrange, c(plots.quant.singapore, ncol=3))
+```
+
+And with the U.S.: 
+
+```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
+plots.quant.usa <- lapply(paises.comp, function(x) plot.quantiles("United States of America", x))
+
+do.call(grid.arrange, c(plots.quant.usa, ncol=3))
 ```
 
 
