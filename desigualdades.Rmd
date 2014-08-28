@@ -11,9 +11,12 @@ library(RColorBrewer)
 library(ineq)
 library(plyr)
 library(reshape2)
+library(gridExtra)
 ```
 
-This document is inspired by [this post](http://freakonometrics.hypotheses.org/16449) by [Arthur Charpentier](https://twitter.com/freakonometrics). Just some plots so far. We may try something more elaborated later on.
+This document was inspired by [this post](http://freakonometrics.hypotheses.org/16449) by [Arthur Charpentier](https://twitter.com/freakonometrics). 
+
+The repository with the code for creating this post is [here](https://github.com/finiterank/pisa). Just some plots so far. We may try something more elaborated (e.g., explicit comparisons of Colombia with other countries) later on.
 
 The data file is available [here](http://beta.icm.edu.pl/PISAcontest/data/student2012.rda). 
 
@@ -69,13 +72,13 @@ ggplot(tabla.sd, aes(x=CNT, y=value, fill=ST04Q01)) + geom_bar(stat="identity", 
 # Distributions of scores (for selected countries)
 
 ```{r, echo=FALSE}
-paises <- c("Chile","Colombia", "Spain", "Peru","Canada",  "Mexico", "Israel", "Japan", "Costa Rica", "Germany", "Finland", "Brazil", "Argentina", "Estonia", "Ireland", "United States of America", "Qatar", "France")
+paises <- c("Spain", "Canada",  "Israel", "Japan", "Germany", "Finland", "Estonia", "Ireland", "Qatar", "France", latin.america)
 math <- st[(st$CNT %in% paises),c("CNT","ST04Q01", "PV1MATH", "PV1READ")]
 ```
 
 First, a violin plot of distributions of scores in math (differentiating by sex and ordered by entropy):
 
-```{r, echo=FALSE, ,  fig.height=12, fig.width=8, fig.align='center'}
+```{r, echo=FALSE, ,  fig.height=14, fig.width=8, fig.align='center'}
 math$CNT <- factor(math$CNT, levels=levels(tabla.entropy$CNT)[levels(tabla.entropy$CNT) %in% paises])
 color.label <- ifelse(levels(math$CNT) == "Colombia", "red", "black")
 ggplot(math, aes(x=CNT, y=PV1MATH)) + 
@@ -89,7 +92,7 @@ ggplot(math, aes(x=CNT, y=PV1MATH)) +
 
 Empirical cummulative density function for each country in math:
 
-```{r, echo=FALSE, ,  fig.height=12, fig.width=7, fig.align='center'}
+```{r, echo=FALSE, ,  fig.height=14, fig.width=7, fig.align='center'}
 #colombia.male.ecdf<- ecdf(math[(math$CNT=="Colombia") & (math$ST04Q01 == "Male"), "PV1MATH"])
 
 ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) + stat_ecdf() + facet_grid(CNT ~ .) + scale_colour_brewer(guide = 'none', palette="Set1") + xlab("Math Score") + ylab("Cummulative Density")
@@ -97,9 +100,57 @@ ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) + stat_ecdf() + facet_grid(CNT ~ .)
 
 And a kernel density estimate (also for math):
 
-```{r, echo=FALSE, ,  fig.height=12, fig.width=7, fig.align='center'}
+```{r, echo=FALSE, ,  fig.height=14, fig.width=7, fig.align='center'}
 ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) + geom_density() + facet_grid(CNT ~ .) + scale_colour_brewer(guide = 'none', palette="Set1") + xlab("Math Score") + ylab("Density")
 ```
+
+# Quantiles
+
+In his post, Charpentier compares France's score distribution with other countries by plotting the difference of the quantiles at each level. Here I do the same for Colombia against 17 other countries with the math scores. Just as an illustration I also include Colombia versus Colombia (red is male and blue is female).
+
+```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
+pisa.math.scores <- function(cnt, sex){
+  return(st[(st$CNT == cnt) & (st$ST04Q01 ==sex),"PV1MATH"])
+}
+
+dif.quant.scores <- function(cntA, cntB, sex, interval){
+  cntA.quant <- quantile(pisa.math.scores(cntA, sex), probs = interval)
+  cntB.quant <- quantile(pisa.math.scores(cntB, sex), probs = interval)
+  return(cntA.quant - cntB.quant)
+  }
+
+plot.quantiles <- function(cntA, cntB){
+  interval <- seq(0,1, 0.001)
+  dif.quant.m <- dif.quant.scores(cntA, cntB, "Male", interval)
+  dif.quant.f <- dif.quant.scores(cntA, cntB, "Female", interval)
+  df <- data.frame(interval, dif.quant.m, dif.quant.f)
+  df <- melt(df, id.vars = "interval")
+  ggplot(df, aes(x=interval, y=value, col=variable)) + 
+    geom_smooth(method="loess") +
+    scale_color_discrete(guide="none", name="Sex", labels=c("Male", "Female")) +
+    xlab("Probability") + 
+    ylab("Quantile") + ggtitle(paste(cntA, " - ", cntB, sep="")) +
+    theme(plot.title = element_text(size = rel(.8)), 
+          plot.margin = unit(c(0,.2,.2,.2), "lines"),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank())
+  }
+
+paises.comp <- c(latin.america, "Japan", "Finland", "Canada", "Spain", "Germany", "Estonia", "France", "Portugal", "Greece")
+
+plots.quant <- lapply(paises.comp, function(x) plot.quantiles("Colombia", x))
+
+do.call(grid.arrange, c(plots.quant, ncol=3))
+```
+
+And let's do the same with Singapore:
+
+```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
+plots.quant.singapore <- lapply(paises.comp, function(x) plot.quantiles("Singapore", x))
+
+do.call(grid.arrange, c(plots.quant.singapore, ncol=3))
+```
+
 
 # Further reading
 
