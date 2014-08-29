@@ -16,7 +16,7 @@ library(gridExtra)
 
 This document was inspired by [this post](http://freakonometrics.hypotheses.org/16449) by [Arthur Charpentier](https://twitter.com/freakonometrics). 
 
-The repository with the code for creating this post is [here](https://github.com/finiterank/pisa). Just some plots so far. We may try something more elaborated (e.g., explicit comparisons of Colombia with other countries) later on.
+The repository with the code for creating this post is [here](https://github.com/finiterank/pisa). Just some plots so far. We may try something more elaborated or formal (e.g., explicit comparisons of Colombia with other countries) later on.
 
 The data file is available [here](http://beta.icm.edu.pl/PISAcontest/data/student2012.rda). 
 
