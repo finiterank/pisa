@@ -73,6 +73,7 @@ ggplot(tabla.sd, aes(x=CNT, y=value, fill=ST04Q01)) + geom_bar(stat="identity", 
 
 ```{r, echo=FALSE}
 paises <- c("Spain", "Canada",  "Israel", "Japan", "Germany", "Finland", "Estonia", "Ireland", "Qatar", "France", latin.america)
+paises.comp <- c(latin.america, "Japan", "Finland", "Canada", "Spain", "Germany", "Estonia", "France", "Portugal", "Greece")
 math <- st[(st$CNT %in% paises),c("CNT","ST04Q01", "PV1MATH", "PV1READ")]
 ```
 
@@ -106,13 +107,13 @@ ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) + geom_density() + facet_grid(CNT ~
 
 # Quantiles
 
-In his post, Charpentier compares France's score distribution with other countries by plotting the difference of the quantiles at each level. Here I do the same for Colombia against 17 other countries with the math scores. Just as an illustration I also include Colombia versus Colombia (red is male and blue is female).
+In [his post](http://freakonometrics.hypotheses.org/16449), Charpentier compares France's score distribution with other countries by plotting the difference of the quantiles at each level. Here I do the same for Colombia against 17 other countries with the math scores. Just as an illustration I also include Colombia versus Colombia (red is male and blue is female).
 
 ```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
 pisa.math.scores <- function(cnt, sex){
   return(st[(st$CNT == cnt) & (st$ST04Q01 ==sex),"PV1MATH"])
 }
-
+ 
 dif.quant.scores <- function(cntA, cntB, sex, interval){
   cntA.quant <- quantile(pisa.math.scores(cntA, sex), probs = interval)
   cntB.quant <- quantile(pisa.math.scores(cntB, sex), probs = interval)
@@ -136,8 +137,6 @@ plot.quantiles <- function(cntA, cntB){
           axis.title.y = element_blank())
   }
 
-paises.comp <- c(latin.america, "Japan", "Finland", "Canada", "Spain", "Germany", "Estonia", "France", "Portugal", "Greece")
-
 plots.quant <- lapply(paises.comp, function(x) plot.quantiles("Colombia", x))
 
 do.call(grid.arrange, c(plots.quant, ncol=3))
@@ -157,6 +156,53 @@ And with the U.S.:
 plots.quant.usa <- lapply(paises.comp, function(x) plot.quantiles("United States of America", x))
 
 do.call(grid.arrange, c(plots.quant.usa, ncol=3))
+```
+
+# Quantile averages
+
+Charpentier suggests another way of comparing these distributions: instead of calculating the quantile of the scores for each level, we could calculate the average of the scores above each quantile and, given two countries, take the difference of these values at each level. 
+
+Once again, let's compare Colombia with a bunch of countries:
+
+
+```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
+quantil.average <- function(x, interval=seq(0,1-0.001,0.001)){
+  a <- sapply(interval, function(y) mean(x[x > quantile(x, y)]))
+  return(a)
+}
+
+lista.averages <- by(st[,"PV1MATH"], st[, "CNT"]:st[,"ST04Q01"], quantil.average)
+ 
+plot.q.av.comp <- function(cntA, cntB){
+  cntA.male <- lista.averages[paste(cntA, ":Male", sep="")]
+  cntB.male <- lista.averages[paste(cntB, ":Male", sep="")]
+  cntA.female <- lista.averages[paste(cntA, ":Female", sep="")]
+  cntB.female <- lista.averages[paste(cntB, ":Female", sep="")]
+  df <- data.frame(prob= seq(0,1-0.001,0.001), 
+                   diff.male=cntA.male[[1]] - cntB.male[[1]], 
+                   diff.female = cntA.female[[1]] - cntB.female[[1]])
+  df <- melt(df, id.vars="prob")
+  ggplot(df, aes(x=prob, y=value, col=variable)) + geom_smooth(method="loess") + 
+    scale_color_discrete(guide="none", name="sex") + 
+    ggtitle(paste(cntA, " - ", cntB, sep="")) +
+    theme(plot.title = element_text(size = rel(.8)), 
+          plot.margin = unit(c(0,.2,.2,.2), "lines"),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank())
+}
+
+plots.q.av.colombia <- lapply(paises.comp, function(x) plot.q.av.comp("Colombia", x))
+
+do.call(grid.arrange, c(plots.q.av.colombia, ncol=3))
+
+```
+
+And with the U.S.: 
+
+```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
+plots.q.av.usa <- lapply(paises.comp, function(x) plot.q.av.comp("United States of America", x))
+
+do.call(grid.arrange, c(plots.q.av.usa, ncol=3))
 ```
 
 
