@@ -5,13 +5,20 @@ date: ""
 output: html_document
 ---
 
-```{r, message=F, warning=F, echo=FALSE}
+```{r setup, message = FALSE, warning = FALSE, echo = FALSE}
+# Packages:
+
 library(ggplot2)
 library(RColorBrewer)
 library(ineq)
 library(plyr)
 library(reshape2)
 library(gridExtra)
+library(knitr)
+
+# Document (knitr) global options:
+
+opts_chunk$set(echo = FALSE, fig.align = "center")
 ```
 
 This document was inspired by [this post](http://freakonometrics.hypotheses.org/16449) by [Arthur Charpentier](https://twitter.com/freakonometrics). 
@@ -20,25 +27,31 @@ The repository with the code for creating this post is [here](https://github.com
 
 The data file is available [here](http://beta.icm.edu.pl/PISAcontest/data/student2012.rda). 
 
-```{r, echo=FALSE}
-# Expand R memory in 32-bit Windows: memory.limit(4095)
-# I know, I need a machine/OS upgrade
+```{r data}
+# Expand R memory in 32-bit Windows: 
+if (memory.limit() < 4095) memory.limit(4095)
 
 rm(list=ls())
 load("data/student2012.rda")
 st <- student2012
 rm(student2012)
-latin.america <- c("Colombia", "Brazil", "Chile", "Argentina", "Peru", 
-                   "Costa Rica", "Mexico", "Uruguay", 
-                   "United States of America")
+
+# Countries
+la <- levels(st$CNT)[c(3, 8, 11, 12, 13, 40, 46, 66)]
+oecd <- as.character(unique(st$CNT[st$OECD=="OECD"]))
+others <- levels(st$CNT)[!levels(st$CNT) %in% c(la, oecd)]
+
+vars<- c("CNT", "ST04Q01", "PV1MATH", "PV1READ")
+st<- st[,vars]
 ```
 
 # Entropy
 
 One possible measure of inequality is entropy, the classical notion developed by Shannon for Information Theory. [This](http://en.wikipedia.org/wiki/Generalized_entropy_index) is a generalized version. I am using here the one with $\alpha=1$. 
 
-```{r, echo=FALSE, fig.height=9, fig.width=8, fig.align='center'}
+In the plot country labels are blue for OECD countries and red for non-OECD latin american countries.
 
+```{r, fig.height=9, fig.width=8}
 #function.entropy <- function(x){
 #  mx <- mean(x)
 #  a <- x * (1/mx)
@@ -47,41 +60,45 @@ One possible measure of inequality is entropy, the classical notion developed by
 #  return(output)
 #}
 
-tabla.entropy <- ddply(st, .(CNT, ST04Q01), summarise, 
-                       entropy.math=entropy(PV1MATH, parameter=1), 
-                       entropy.read=entropy(PV1READ, parameter=1), 
-                       mean.math=mean(PV1MATH), mean.read=mean(PV1READ))
-
+tabla.entropy <- ddply(.data = st, .variables = .(CNT, ST04Q01), 
+                       .fun = summarise, 
+                       entropy.math = entropy(PV1MATH, parameter=1), 
+                       entropy.read = entropy(PV1READ, parameter=1), 
+                       mean.math = mean(PV1MATH), mean.read = mean(PV1READ))
+ 
 tabla.entropy$CNT <- reorder(tabla.entropy$CNT, tabla.entropy$entropy.math)
 
-color.label.entropy <- ifelse(levels(tabla.entropy$CNT) %in% latin.america,
-                              "red", "black")
-tabla.entropy.melt <- melt(tabla.entropy, id.vars=c("CNT", "ST04Q01"), 
+color.label <- ifelse(levels(tabla.entropy$CNT) %in% oecd,
+                              "blue",
+                      ifelse(test = levels(tabla.entropy$CNT) %in% la, 
+                             "red", "black"))
+
+tabla.entropy.melt <- melt(tabla.entropy, id.vars = c("CNT", "ST04Q01"), 
                            measure.vars = c("entropy.math", "entropy.read"))
 
 levels(tabla.entropy.melt$variable) <- c("Math", "Reading")
 
-p<- ggplot(tabla.entropy.melt, aes(x=CNT, y=value, fill=ST04Q01)) + 
-      geom_bar(stat="identity", position="dodge") + 
+p<- ggplot(tabla.entropy.melt, aes(x = CNT, y = value, fill = ST04Q01)) + 
+      geom_bar(stat = "identity", position = "dodge") + 
       facet_grid(. ~ variable) + 
       coord_flip() + 
       xlab("Country") + 
       ylab("Entropy (Theil index)") + 
-      theme(axis.text.y = element_text(colour=color.label.entropy, hjust=1)) + 
-      scale_fill_discrete(name="Sex")
+      theme(axis.text.y = element_text(colour = color.label, hjust=1)) + 
+      scale_fill_discrete(name = "Sex")
 
 print(p)
 ```
 
 Although entropy is not necessarily a measure of variance, collections of test scores with higher entropy tend to have lower average than those with lower entropy:
 
-```{r, echo=FALSE, ,  fig.height=7, fig.width=7, fig.align='center'}
-ggplot(tabla.entropy, aes(x=mean.math, y=entropy.math, col=ST04Q01)) +
+```{r, fig.height=7, fig.width=7}
+ggplot(tabla.entropy, aes(x = mean.math, y = entropy.math, col = ST04Q01)) +
   geom_point() + 
-  geom_smooth(method="lm") + 
+  geom_smooth(method = "lm") + 
   xlab("Mean Math Scores") + 
   ylab("Entropy Math Scores") + 
-  scale_color_discrete(name="Sex")
+  scale_color_discrete(name = "Sex")
 ```
 
 By the way, why is the entropy of female scores (almost) consistently lower than that of males of the same country? 
@@ -90,62 +107,56 @@ By the way, why is the entropy of female scores (almost) consistently lower than
 
 Standard deviation seems to be the most commonly used indicator of performance inequality in standarized test scores. The ranking changes drastically: 
 
-```{r, echo=FALSE, fig.height=9, fig.width=8, fig.align='center'}
-tabla.sd <- ddply(st, .(CNT, ST04Q01), summarise, sd.math=sd(PV1MATH), 
-                  sd.read=sd(PV1READ))
+```{r, fig.height=9, fig.width=8}
+tabla.sd <- ddply(.data = st, .variables = .(CNT, ST04Q01), summarise, 
+                  sd.math = sd(PV1MATH), sd.read = sd(PV1READ))
 
 tabla.sd$CNT <- reorder(tabla.sd$CNT, tabla.sd$sd.math)
 
-color.label.sd <- ifelse(levels(tabla.sd$CNT) %in% latin.america, "red",
-                         "black")
-
-tabla.sd <- melt(tabla.sd, id.vars=c("CNT", "ST04Q01"), 
+tabla.sd <- melt(tabla.sd, id.vars = c("CNT", "ST04Q01"), 
                  measure.vars = c("sd.math", "sd.read"))
 
-ggplot(tabla.sd, aes(x=CNT, y=value, fill=ST04Q01)) + 
-  geom_bar(stat="identity", position="dodge") + 
-  facet_grid(. ~ variable) +
-  coord_flip() +
-  scale_fill_discrete(name="Sex") +
-  theme(axis.text.y = element_text(colour=color.label.sd, hjust=1)) +
-  xlab("Country") +
-  ylab("Standard Deviation")
+p<- ggplot(tabla.sd, aes(x = CNT, y = value, fill = ST04Q01)) + 
+      geom_bar(stat = "identity", position = "dodge") + 
+      facet_grid(. ~ variable) +
+      coord_flip() +
+      scale_fill_discrete(name = "Sex") +
+      theme(axis.text.y = element_text(colour = color.label, hjust=1)) +
+      xlab("Country") +
+      ylab("Standard Deviation")
+
+print(p)
 ```
 
 # Distributions of scores (for selected countries)
 
-```{r, echo=FALSE}
-paises <- c("Spain", "Canada",  "Israel", "Japan", "Germany", "Finland",
-            "Estonia", "Ireland", "Qatar", "France", latin.america)
-
-paises.comp <- c(latin.america, "Japan", "Finland", "Canada", "Spain",
-                 "Germany", "Estonia", "France", "Portugal", "Greece")
-
-math <- st[(st$CNT %in% paises),c("CNT","ST04Q01", "PV1MATH", "PV1READ")]
+```{r}
+paises <- unique(c(la, oecd)) 
+math <- st[st$CNT %in% paises, ]
 ```
 
 First, a violin plot of distributions of scores in math (differentiating by sex and ordered by entropy):
 
-```{r, echo=FALSE, fig.height=14, fig.width=8, fig.align='center'}
+```{r, fig.height=14, fig.width=8}
 math$CNT <- factor(math$CNT, levels = paises)
  
 color.label <- ifelse(levels(math$CNT) == "Colombia", "red", "black")
 
-p<- ggplot(math, aes(x=CNT, y=PV1MATH)) + 
-      geom_violin(aes(fill=factor(CNT == "Colombia"))) + 
-      facet_grid(. ~ ST04Q01) + 
+p<- ggplot(math, aes(x = CNT, y = PV1MATH)) + 
+      geom_violin(aes(fill = factor(CNT %in% oecd))) + 
+      facet_wrap( ~ ST04Q01, nrow = 2) + 
       xlab("Country") + 
       ylab("Math Score") +
-      scale_fill_brewer(guide = 'none', palette="Set1") + 
-      coord_flip() +
-      theme(axis.text.y = element_text(colour=color.label, hjust=1))
+      scale_fill_brewer(guide = 'none', palette = "Set1") + 
+      theme(axis.text.x = element_text(colour = color.label, hjust = 1, 
+                                       angle = 45))
 
 print(p)
 ```
 
 Empirical cummulative density function for each country in math:
 
-```{r, echo=FALSE, fig.height=11, fig.width=9, fig.align='center'}
+```{r, fig.height=11, fig.width=9}
 #colombia.male.ecdf<- ecdf(math[(math$CNT=="Colombia") & (math$ST04Q01 == "Male"), "PV1MATH"])
 
 p <- ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) + 
@@ -159,7 +170,7 @@ print(p)
 
 And a kernel density estimate (also for math):
 
-```{r, echo=FALSE, fig.height=11, fig.width=9, fig.align='center'}
+```{r, fig.height=11, fig.width=9}
 ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) +
   geom_density() + 
   facet_grid(~ CNT, nrow=5) +
@@ -172,9 +183,9 @@ ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) +
 
 In [his post](http://freakonometrics.hypotheses.org/16449), Charpentier compares France's score distribution with other countries by plotting the difference of the quantiles at each level. Here I do the same for Colombia against 17 other countries with the math scores. Just as an illustration I also include Colombia versus Colombia (red is male and blue is female).
 
-```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
+```{r, fig.height=14, fig.width=9}
 pisa.math.scores <- function(cnt, sex){
-  return(st[(st$CNT == cnt) & (st$ST04Q01 ==sex),"PV1MATH"])
+  return(st[(st$CNT == cnt) & (st$ST04Q01 == sex),"PV1MATH"])
 }
  
 dif.quant.scores <- function(cntA, cntB, sex, interval){
@@ -207,7 +218,7 @@ do.call(grid.arrange, c(plots.quant, ncol=3))
 
 Let's do the same with Singapore:
 
-```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
+```{r, fig.height=14, fig.width=9}
 plots.quant.singapore <- lapply(paises.comp, function(x) plot.quantiles("Singapore", x))
 
 do.call(grid.arrange, c(plots.quant.singapore, ncol=3))
@@ -215,7 +226,7 @@ do.call(grid.arrange, c(plots.quant.singapore, ncol=3))
 
 And with the U.S.: 
 
-```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
+```{r, fig.height=14, fig.width=9}
 plots.quant.usa <- lapply(paises.comp, function(x) plot.quantiles("United States of America", x))
 
 do.call(grid.arrange, c(plots.quant.usa, ncol=3))
@@ -228,7 +239,7 @@ Charpentier suggests another way of comparing these distributions: instead of ca
 Once again, let's compare Colombia with a bunch of countries:
 
 
-```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
+```{r, fig.height=14, fig.width=9}
 quantil.average <- function(x, interval=seq(0,1-0.001,0.001)){
   a <- sapply(interval, function(y) mean(x[x > quantile(x, y)]))
   return(a)
@@ -262,7 +273,7 @@ do.call(grid.arrange, c(plots.q.av.colombia, ncol=3))
 
 And with the U.S.: 
 
-```{r, echo=FALSE, fig.height=14, fig.width=9, fig.align='center'}
+```{r, fig.height=14, fig.width=9}
 plots.q.av.usa <- lapply(paises.comp, function(x) plot.q.av.comp("United States of America", x))
 
 do.call(grid.arrange, c(plots.q.av.usa, ncol=3))
