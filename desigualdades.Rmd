@@ -18,7 +18,7 @@ library(knitr)
 
 # Document (knitr) global options:
 
-opts_chunk$set(echo = FALSE, fig.align = "center")
+opts_chunk$set(echo = FALSE, results = "hide", fig.align = "center")
 ```
 
 This document was inspired by [this post](http://freakonometrics.hypotheses.org/16449) by [Arthur Charpentier](https://twitter.com/freakonometrics). 
@@ -92,7 +92,7 @@ print(p)
 
 Although entropy is not necessarily a measure of variance, collections of test scores with higher entropy tend to have lower average than those with lower entropy:
 
-```{r, fig.height=7, fig.width=7}
+```{r, fig.height=6, fig.width=3.5}
 ggplot(tabla.entropy, aes(x = mean.math, y = entropy.math, col = ST04Q01)) +
   geom_point() + 
   geom_smooth(method = "lm") + 
@@ -131,14 +131,20 @@ print(p)
 # Distributions of scores (for selected countries)
 
 ```{r}
-paises <- unique(c(la, oecd)) 
+paises <- unique(c(la, oecd))
+
+paises.comp <- c(la, "Japan", "Finland", "Canada", "Spain", "Germany",
+                 "Estonia", "France", "Portugal", "Greece")
+
 math <- st[st$CNT %in% paises, ]
 ```
 
 First, a violin plot of distributions of scores in math (differentiating by sex and ordered by entropy):
 
-```{r, fig.height=14, fig.width=8}
-math$CNT <- factor(math$CNT, levels = paises)
+```{r, fig.height=8, fig.width=14}
+# math$CNT <- factor(math$CNT, levels = paises)
+math$CNT <- factor(math$CNT, levels = levels(tabla.entropy$CNT)[
+                     levels(tabla.entropy$CNT) %in% paises])
  
 color.label <- ifelse(levels(math$CNT) == "Colombia", "red", "black")
 
@@ -156,28 +162,32 @@ print(p)
 
 Empirical cummulative density function for each country in math:
 
-```{r, fig.height=11, fig.width=9}
+```{r, fig.height=11, fig.width=14}
 #colombia.male.ecdf<- ecdf(math[(math$CNT=="Colombia") & (math$ST04Q01 == "Male"), "PV1MATH"])
 
 p <- ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) + 
       stat_ecdf() + 
       facet_wrap(~ CNT, nrow=5) + 
       scale_colour_brewer(guide = 'none', palette="Set1") + 
-      xlab("Math Score") + ylab("Cummulative Density")
+      xlab("Math Score") + ylab("Cummulative Density") + 
+      theme(axis.text.x = element_text(angle = 90))
 
 print(p)
 ```
 
 And a kernel density estimate (also for math):
 
-```{r, fig.height=11, fig.width=9}
+```{r, fig.height=11, fig.width=14}
 ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) +
   geom_density() + 
-  facet_grid(~ CNT, nrow=5) +
+  facet_wrap(~ CNT, nrow=5) +
   scale_colour_brewer(guide = 'none', palette="Set1") +
   xlab("Math Score") + 
-  ylab("Density")
+  ylab("Density") + 
+  theme(axis.text.x = element_text(angle = 90))
 ```
+
+The violin plots show there is a substantial difference between OECD countries and L.A. countries. For instance note how almost all OECD countries have their median approximately around 500 points while the proportion of Colombian students above that score is just a tail, in fact the median score of OECD countries in math is the  `r (p <- round(1 - mean(st$PV1MATH[st$CNT == "Colombia"] > median(st$PV1MATH[st$CNT %in% oecd])), 4)*100)` quantile of Colombia (!), that is, only `r 100 - p`% of colombians have better scores than at least 50% of OECD children.
 
 # Quantiles
 
