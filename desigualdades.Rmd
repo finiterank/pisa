@@ -187,7 +187,9 @@ ggplot(math, aes(x=PV1MATH, colour=ST04Q01)) +
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-The violin plots show there is a substantial difference between OECD countries and L.A. countries. For instance note how almost all OECD countries have their median approximately around 500 points while the proportion of Colombian students above that score is just a tail, in fact the median score of OECD countries in math is the  `r (p <- round(1 - mean(st$PV1MATH[st$CNT == "Colombia"] > median(st$PV1MATH[st$CNT %in% oecd])), 4)*100)` quantile of Colombia (!), that is, only `r 100 - p`% of colombians have better scores than at least 50% of OECD children.
+The violin plots show there is a substantial difference between OECD countries and L.A. countries. For instance, note how almost all OECD countries have their median approximately around 500 points while the proportion of Colombian students above that score is just a tail, in fact the median score of OECD countries in math corresponds to the  `r (p <- round(1 - mean(st$PV1MATH[st$CNT == "Colombia"] > median(st$PV1MATH[st$CNT %in% oecd])), 4)*100)` quantile of Colombia, that is, 50% of OECD students scored better than _at least_ `r p`% of colombian students (!).
+
+<!--- or only `r 100 - p`% of colombians have better scores than at least 50% of OECD children. --->
 
 # Quantiles
 
